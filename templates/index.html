@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lemi Packing Control</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="min-h-screen flex flex-col bg-[#0f141c] text-slate-100 font-sans">
+
+    <!-- =================================================================== -->
+    <!-- 1. LOGIN SCREEN (Matches Image 1 from 1st upload set) -->
+    <!-- =================================================================== -->
+    <div id="fullLoginScreen" class="fixed inset-0 bg-[#0c1017] z-50 flex items-center justify-center p-4">
+        <div class="dark-card w-full max-w-md p-8 rounded-xl shadow-2xl space-y-6">
+            <!-- Header -->
+            <div class="space-y-1">
+                <h1 class="text-2xl font-bold text-amber-500 tracking-wide">Lemi Packing</h1>
+                <p class="text-xs text-slate-400 font-medium" id="login_subtitle">የማሸጊያ ክፍል መቆጣጠሪያ ሥርዓት</p>
+            </div>
+
+            <!-- Login Form -->
+            <form id="mainLoginForm" onsubmit="handleLoginSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="form-label" id="login_email_label">ኢሜይል</label>
+                    <input type="email" id="login_email" placeholder="admin@leminationalcementplc.com" class="form-input" required>
+                </div>
+
+                <div>
+                    <label class="form-label" id="login_password_label">የይለፍ ቃል</label>
+                    <input type="password" id="login_password" placeholder="••••••••" class="form-input" required>
+                </div>
+
+                <button type="submit" class="btn-amber w-full py-3 font-bold text-sm tracking-wide shadow-md" id="login_submit_btn">
+                    ግባ
+                </button>
+
+                <!-- Language Dropdown at Bottom of Login Box -->
+                <div class="pt-2">
+                    <select id="loginLanguageSelect" onchange="changeLanguage(this.value)" class="form-input border-amber-500 text-xs font-semibold cursor-pointer">
+                        <option value="am">አማርኛ</option>
+                        <option value="en">English</option>
+                        <option value="zh">中文</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- =================================================================== -->
+    <!-- 2. MAIN SYSTEM LAYOUT (Matches Images across all sets) -->
+    <!-- =================================================================== -->
+    <div id="mainAppWrapper" class="hidden flex-col min-h-screen">
+
+        <!-- Top Header Navigation Bar -->
+        <header class="bg-[#111622] border-b border-[#1f293a] px-6 py-3 flex items-center justify-between sticky top-0 z-40">
+            <!-- Left Brand -->
+            <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 bg-amber-500 rounded-sm"></span>
+                <span class="text-base font-bold text-white tracking-wide">Lemi Packing Control</span>
+            </div>
+
+            <!-- Right Controls -->
+            <div class="flex items-center gap-4">
+                <!-- Top Header Language Select -->
+                <select id="languageSelect" onchange="changeLanguage(this.value)" class="form-input w-36 py-1.5 text-xs font-semibold border-amber-500/80 cursor-pointer">
+                    <option value="en">English</option>
+                    <option value="am">አማርኛ</option>
+                    <option value="zh">中文</option>
+                </select>
+
+                <!-- User Profile & Action Buttons -->
+                <div class="text-right text-xs">
+                    <div class="font-semibold text-slate-200" id="displayUserName">Default Administrator</div>
+                    <div class="text-[11px] text-slate-400" id="displayUserRole">· Admin</div>
+                </div>
+
+                <button onclick="openChangePasswordModal()" class="px-3 py-1.5 rounded bg-[#1c2534] hover:bg-[#253145] text-xs font-semibold text-slate-200 border border-[#2b374a] transition">
+                    Change Password
+                </button>
+
+                <button onclick="handleLogout()" class="px-3 py-1.5 rounded bg-[#1c2534] hover:bg-[#253145] text-xs font-semibold text-slate-200 border border-[#2b374a] transition">
+                    Log out
+                </button>
+            </div>
+        </header>
+
+        <!-- Body Layout: Left Sidebar + Right Main Workspace -->
+        <div class="flex flex-1">
+
+            <!-- Left Sidebar Navigation Menu -->
+            <aside class="w-64 bg-[#151b26] border-r border-[#1f293a] flex flex-col shrink-0">
+                <nav class="py-4 space-y-1">
+                    <button onclick="switchTab('packing_history')" id="sidebar_btn_packing_history" class="sidebar-link active-sidebar w-full text-left">
+                        <i class="fa-solid fa-box text-amber-500"></i>
+                        <span data-tr="nav_module1">Packing History</span>
+                    </button>
+                    <button onclick="switchTab('attendance')" id="sidebar_btn_attendance" class="sidebar-link w-full text-left">
+                        <i class="fa-regular fa-clock text-slate-400"></i>
+                        <span data-tr="nav_module2">Attendance</span>
+                    </button>
+                    <button onclick="switchTab('worker_access')" id="sidebar_btn_worker_access" class="sidebar-link w-full text-left">
+                        <i class="fa-solid fa-user-gear text-slate-400"></i>
+                        <span data-tr="nav_module3">Worker Access</span>
+                    </button>
+                    <button onclick="switchTab('dashboard')" id="sidebar_btn_dashboard" class="sidebar-link w-full text-left">
+                        <i class="fa-solid fa-chart-column text-slate-400"></i>
+                        <span data-tr="nav_dashboard">Dashboard</span>
+                    </button>
+                </nav>
+            </aside>
+
+            <!-- Right Main Workspace -->
+            <main class="flex-1 p-6 space-y-6 overflow-y-auto max-w-7xl">
+
+                <!-- =================================================================== -->
+                <!-- MODULE 1: PACKING HISTORY — DISPATCH, TONNAGE & PAYMENT -->
+                <!-- =================================================================== -->
+                <section id="tab_packing_history" class="tab-content space-y-6">
+                    <h2 class="text-xl font-bold text-white heading-serif" data-tr="m1_title">Packing History — Dispatch, Tonnage & Payment</h2>
+
+                    <!-- Dispatch Entry Form -->
+                    <div class="dark-card p-6 space-y-5">
+                        <form id="dispatchForm" onsubmit="handleDispatchSubmit(event)" class="space-y-5">
+                            <!-- Row 1: Cement Type, Dispatch Method, Line/Group -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="form-label" data-tr="cement_type_label">Cement Type</label>
+                                    <select id="cement_type" class="form-input">
+                                        <option value="OPC">OPC</option>
+                                        <option value="PPC">PPC</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="form-label" data-tr="dispatch_method_label">Dispatch Method</label>
+                                    <select id="dispatch_method_select" onchange="toggleDispatchMethodFields()" class="form-input">
+                                        <option value="Robot Packaging Line" data-tr="method_robot">Robot Packaging Line</option>
+                                        <option value="Manual Packaging Line" data-tr="method_manual">Manual Packaging Line</option>
+                                        <option value="Bulk Loading" data-tr="method_bulk">Bulk Loading</option>
+                                    </select>
+                                </div>
+                                <div id="line_group_wrapper">
+                                    <label class="form-label" id="line_group_label" data-tr="packaging_line_label">Robot Line</label>
+                                    <select id="packaging_line_select" class="form-input">
+                                        <option value="Robot 1">Robot 1</option>
+                                        <option value="Robot 2">Robot 2</option>
+                                        <option value="Robot 3">Robot 3</option>
+                                        <option value="Robot 4">Robot 4</option>
+                                        <option value="Robot 5">Robot 5</option>
+                                        <option value="Robot 6">Robot 6</option>
+                                        <option value="Robot 7">Robot 7</option>
+                                        <option value="Robot 8">Robot 8</option>
+                                        <option value="Robot 9">Robot 9</option>
+                                        <option value="Robot 10">Robot 10</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Row 2: Date, Shift, Truck Plates -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="form-label" data-tr="date_label">Date</label>
+                                    <input type="date" id="dispatch_date" class="form-input" required>
+                                </div>
+                                <div>
+                                    <label class="form-label" data-tr="shift_label">Shift</label>
+                                    <select id="dispatch_shift" class="form-input">
+                                        <option value="Day" data-tr="shift_a">Day</option>
+                                        <option value="Night" data-tr="shift_b">Night</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="form-label" data-tr="truck_plate_label">Truck Plate No.</label>
+                                    <input type="text" id="truck_plate" placeholder="E.G. AA 3-9988" class="form-input uppercase">
+                                </div>
+                                <div>
+                                    <label class="form-label" data-tr="trailer_plate_label">Trailer / Power Unit Plate No.</label>
+                                    <input type="text" id="trailer_plate" placeholder="E.G. ET 4-1122" class="form-input uppercase">
+                                </div>
+                            </div>
+
+                            <!-- Row 3: Initial Tonnage, Returned Tonnage -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="form-label" data-tr="initial_tonnage_label">Initial Loaded Tonnage (t)</label>
+                                    <input type="number" id="initial_tonnage" step="0.01" min="0" value="0" oninput="updateLiveMath()" class="form-input" required>
+                                </div>
+                                <div>
+                                    <label class="form-label" data-tr="returned_tonnage_label">Returned Overload Tonnage (t)</label>
+                                    <input type="number" id="returned_tonnage" step="0.01" min="0" value="0" oninput="updateLiveMath()" class="form-input">
+                                </div>
+                            </div>
+
+                            <!-- Penalty Options Section (Visible for Manual Line) -->
+                            <div id="penalty_section" class="hidden p-4 bg-[#121722] border border-[#232d3f] rounded-md space-y-3">
+                                <label class="form-label font-bold text-amber-500" data-tr="penalty_section_label">Penalty Deduction Options</label>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <select id="penalty_type" onchange="togglePenaltyInput(); updateLiveMath();" class="form-input text-xs font-semibold">
+                                        <option value="none" data-tr="penalty_none">No Penalty</option>
+                                        <option value="birr" data-tr="penalty_birr">Penalty in Birr (Flat Amount)</option>
+                                        <option value="tonnage" data-tr="penalty_tonnage">Penalty in Tonnage (Tons × 20 ETB)</option>
+                                    </select>
+                                    <div id="penalty_val_box" class="hidden">
+                                        <input type="number" id="penalty_value" step="0.01" min="0" value="0" oninput="updateLiveMath()" placeholder="Penalty Amount" class="form-input font-bold text-amber-400">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Calculated Summary Rows -->
+                            <div class="space-y-2 pt-2">
+                                <div class="summary-row">
+                                    <span class="text-xs font-semibold text-slate-300">Net Tonnage (t)</span>
+                                    <span class="text-sm font-bold text-white font-mono" id="preview_net_tonnage">0.00</span>
+                                </div>
+                                <div class="summary-row">
+                                    <span class="text-xs font-semibold text-slate-300">Gross Pay (ETB)</span>
+                                    <span class="text-sm font-bold text-white font-mono" id="preview_gross_pay">0.00</span>
+                                </div>
+                                <div class="summary-row">
+                                    <span class="text-xs font-semibold text-slate-300">Total Penalty (ETB)</span>
+                                    <span class="text-sm font-bold text-white font-mono" id="preview_total_penalty">0.00</span>
+                                </div>
+                                <div class="summary-row-highlight">
+                                    <span class="text-xs font-bold text-amber-500">Net Payable (ETB)</span>
+                                    <span class="text-base font-extrabold text-amber-400 font-mono" id="preview_net_payable">0.00</span>
+                                </div>
+                            </div>
+
+                            <!-- Full Width Gold Button -->
+                            <button type="submit" class="btn-amber w-full py-3.5 text-sm font-bold shadow-md tracking-wide">
+                                Save Dispatch Record
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Dispatch Log Card -->
+                    <div class="dark-card p-6 space-y-4">
+                        <h3 class="text-lg font-bold text-white heading-serif">Dispatch Log</h3>
+
+                        <!-- Filter Controls -->
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                            <div>
+                                <label class="form-label">Date range</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="date" id="filter_date_from" onchange="loadDispatchRecords()" class="form-input text-xs">
+                                    <input type="date" id="filter_date_to" onchange="loadDispatchRecords()" class="form-input text-xs">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="form-label">Shift</label>
+                                <select id="filter_dispatch_shift" onchange="loadDispatchRecords()" class="form-input text-xs">
+                                    <option value="">All</option>
+                                    <option value="Day">Day</option>
+                                    <option value="Night">Night</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label">Method</label>
+                                <select id="filter_dispatch_method" onchange="loadDispatchRecords()" class="form-input text-xs">
+                                    <option value="">All</option>
+                                    <option value="Robot Packaging Line">Robot Packaging Line</option>
+                                    <option value="Manual Packaging Line">Manual Packaging Line</option>
+                                    <option value="Bulk Loading">Bulk Loading</option>
+                                </select>
+                            </div>
+                            <div>
+                                <a href="/api/export/dispatch?format=csv" class="btn-amber inline-block text-center py-2 px-4 text-xs font-bold">
+                                    Export CSV
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Dispatch Table -->
+                        <div class="overflow-x-auto rounded border border-[#232d3f]">
+                            <table class="w-full text-left text-xs text-slate-300">
+                                <thead class="bg-[#121722] text-slate-400 font-semibold text-[11px] border-b border-[#232d3f]">
+                                    <tr>
+                                        <th class="p-3">Date</th>
+                                        <th class="p-3">Cement Type</th>
+                                        <th class="p-3">Dispatch Method</th>
+                                        <th class="p-3">Robot Line / Group</th>
+                                        <th class="p-3">Shift</th>
+                                        <th class="p-3">Net Tonnage (t)</th>
+                                        <th class="p-3">Gross Pay (ETB)</th>
+                                        <th class="p-3">Total Penalty (ETB)</th>
+                                        <th class="p-3">Net Payable (ETB)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dispatchTableBody" class="divide-y divide-[#1e2736]">
+                                    <tr><td colspan="9" class="p-4 text-center text-slate-500">No records found.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+
+                <!-- =================================================================== -->
+                <!-- MODULE 2: ATTENDANCE & OVERTIME (Matches Images 4 & 5 from set 2) -->
+                <!-- =================================================================== -->
+                <section id="tab_attendance" class="tab-content hidden space-y-6">
+                    <h2 class="text-xl font-bold text-white heading-serif" data-tr="m2_title">Attendance & Overtime</h2>
+
+                    <!-- Section 1: Employee Roster -->
+                    <div class="dark-card p-6 space-y-4">
+                        <h3 class="text-base font-bold text-white heading-serif">Employee Roster</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div>
+                                <label class="form-label">Employee ID</label>
+                                <input type="text" id="roster_emp_id" class="form-input bg-white text-slate-900 font-bold" placeholder="e.g. EMP-001">
+                            </div>
+                            <div>
+                                <label class="form-label">Full Name</label>
+                                <input type="text" id="roster_full_name" class="form-input bg-white text-slate-900 font-bold" placeholder="e.g. Abebe Bikila">
+                            </div>
+                            <div>
+                                <label class="form-label">Position</label>
+                                <input type="text" id="roster_position" class="form-input bg-white text-slate-900 font-bold" placeholder="e.g. Operator">
+                            </div>
+                        </div>
+
+                        <button onclick="addRosterEmployee()" class="px-4 py-2 bg-[#1d2533] hover:bg-[#253145] text-xs font-bold text-slate-200 border border-[#2d394d] rounded transition">
+                            Add employee
+                        </button>
+
+                        <div class="overflow-x-auto pt-2">
+                            <table class="w-full text-left text-xs text-slate-300">
+                                <thead class="text-slate-400 font-semibold border-b border-[#232d3f]">
+                                    <tr>
+                                        <th class="pb-2">Employee ID</th>
+                                        <th class="pb-2">Full Name</th>
+                                        <th class="pb-2">Position</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rosterTableBody">
+                                    <tr><td colspan="3" class="py-3 text-slate-500">No records yet.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Section 2: Weekly Attendance Grid -->
+                    <div class="dark-card p-6 space-y-4">
+                        <h3 class="text-base font-bold text-white heading-serif">Weekly Attendance Grid</h3>
+                        
+                        <div>
+                            <label class="form-label">Week start (Monday)</label>
+                            <input type="date" id="week_start_date" onchange="renderWeeklyGridHeaders()" class="form-input w-48 text-xs">
+                        </div>
+
+                        <!-- Status Legend Pill -->
+                        <div class="p-3 bg-[#121722] border border-[#232d3f] rounded-md text-xs font-medium text-sky-400 flex flex-wrap gap-3">
+                            <span>✓ Present</span>
+                            <span>·</span>
+                            <span>X Absent</span>
+                            <span>·</span>
+                            <span>SL Sick Leave</span>
+                            <span>·</span>
+                            <span>AL Annual Leave</span>
+                            <span>·</span>
+                            <span>R Rest Day</span>
+                        </div>
+
+                        <!-- Tip Banner -->
+                        <div class="p-3 bg-[#132235] border border-sky-800/40 rounded-md text-xs text-sky-300 flex items-center gap-2">
+                            <span>💡</span>
+                            <span>Type a new Employee ID, Name and Position in the last row to add someone — no roster step needed.</span>
+                        </div>
+
+                        <!-- Grid Table -->
+                        <div class="overflow-x-auto rounded border border-[#232d3f]">
+                            <table class="w-full text-left text-xs text-slate-300">
+                                <thead class="bg-[#121722] text-slate-300 font-semibold text-[11px] border-b border-[#232d3f]" id="weeklyGridHeader">
+                                    <tr>
+                                        <th class="p-2.5">Employee ID</th>
+                                        <th class="p-2.5">Full Name</th>
+                                        <th class="p-2.5">Position</th>
+                                        <th class="p-2.5">Mon 09-28 Day</th>
+                                        <th class="p-2.5">Mon 09-28 Night</th>
+                                        <th class="p-2.5">Tue 09-29 Day</th>
+                                        <th class="p-2.5">Tue 09-29 Night</th>
+                                        <th class="p-2.5">Wed 09-30 Day</th>
+                                        <th class="p-2.5">Wed 09-30 Night</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="weeklyGridBody" class="divide-y divide-[#1e2736]">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <button onclick="addGridRow()" class="px-4 py-2 bg-[#1d2533] hover:bg-[#253145] text-xs font-bold text-slate-200 border border-[#2d394d] rounded transition">
+                            + Add employee
+                        </button>
+
+                        <div class="pt-2">
+                            <button onclick="saveWeeklyAttendanceBatch()" class="btn-amber py-3 px-6 text-xs font-bold shadow-md">
+                                Save Weekly Attendance
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Section 3: Overtime Entry (per day) (Matches Image 4) -->
+                    <div class="dark-card p-6 space-y-4">
+                        <h3 class="text-base font-bold text-white heading-serif">Overtime Entry (per day)</h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="form-label">Overtime date</label>
+                                <input type="date" id="ot_entry_date" class="form-input text-xs">
+                            </div>
+                            <div>
+                                <label class="form-label">Day Type</label>
+                                <select id="ot_day_type" class="form-input text-xs">
+                                    <option value="Regular Working Day">Regular</option>
+                                    <option value="Sunday">Sunday</option>
+                                    <option value="Public Holiday">Public Holiday</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- OT Batch Table -->
+                        <div class="overflow-x-auto rounded border border-[#232d3f]">
+                            <table class="w-full text-left text-xs text-slate-300">
+                                <thead class="bg-[#121722] text-slate-400 font-semibold text-[11px] border-b border-[#232d3f]">
+                                    <tr>
+                                        <th class="p-3">Full Name</th>
+                                        <th class="p-3">Position</th>
+                                        <th class="p-3">OT Hours</th>
+                                        <th class="p-3">OT Rate (Birr/h)</th>
+                                        <th class="p-3">OT Pay (ETB)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="otGridBody" class="divide-y divide-[#1e2736]">
+                                    <!-- Rows dynamically populated -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <button onclick="saveOvertimeBatch()" class="btn-amber py-2.5 px-5 text-xs font-bold shadow-md">
+                            Save Overtime
+                        </button>
+                    </div>
+
+                    <!-- Section 4: Search & Filter (Matches Image 4) -->
+                    <div class="dark-card p-6 space-y-4">
+                        <h3 class="text-base font-bold text-white heading-serif">Search & Filter</h3>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                            <div>
+                                <label class="form-label">Date range</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="date" id="filter_att_date_from" onchange="loadAttendanceRecords()" class="form-input text-xs">
+                                    <input type="date" id="filter_att_date_to" onchange="loadAttendanceRecords()" class="form-input text-xs">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="form-label">Employee</label>
+                                <select id="filter_att_employee" onchange="loadAttendanceRecords()" class="form-input text-xs">
+                                    <option value="">All</option>
+                                </select>
+                            </div>
+                            <div>
+                                <a href="/api/export/attendance?format=csv" class="btn-amber inline-block text-center py-2 px-4 text-xs font-bold">
+                                    Export CSV
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto rounded border border-[#232d3f]">
+                            <table class="w-full text-left text-xs text-slate-300">
+                                <thead class="bg-[#121722] text-slate-400 font-semibold text-[11px] border-b border-[#232d3f]">
+                                    <tr>
+                                        <th class="p-3">Date</th>
+                                        <th class="p-3">Employee Name</th>
+                                        <th class="p-3">Position</th>
+                                        <th class="p-3">Shift A Status</th>
+                                        <th class="p-3">Shift B Status</th>
+                                        <th class="p-3">OT Hours</th>
+                                        <th class="p-3">OT Pay (ETB)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="attendanceHistoryBody" class="divide-y divide-[#1e2736]">
+                                    <tr><td colspan="7" class="p-4 text-center text-slate-500">No records yet.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+
+                <!-- =================================================================== -->
+                <!-- MODULE 3: WORKER ACCESS (Matches Image 3 from set 2) -->
+                <!-- =================================================================== -->
+                <section id="tab_worker_access" class="tab-content hidden space-y-6">
+                    <h2 class="text-xl font-bold text-white heading-serif" data-tr="m3_title">Worker Access</h2>
+
+                    <!-- Card 1: Add Worker (Matches Image 3) -->
+                    <div class="dark-card p-6 space-y-4">
+                        <h3 class="text-base font-bold text-white heading-serif">Add Worker</h3>
+                        <form id="addUserForm" onsubmit="handleCreateUser(event)" class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div>
+                                    <label class="form-label">Email</label>
+                                    <input type="email" id="new_user_email" class="form-input text-xs" placeholder="e.g. worker@leminationalcementplc.com" required>
+                                </div>
+                                <div>
+                                    <label class="form-label">Full Name</label>
+                                    <input type="text" id="new_user_fullname" class="form-input text-xs bg-white text-slate-900 font-bold" placeholder="e.g. Abebe Bikila" required>
+                                </div>
+                                <div>
+                                    <label class="form-label">Temporary Password</label>
+                                    <input type="password" id="new_user_password" class="form-input text-xs bg-white text-slate-900 font-bold" placeholder="••••••••" required>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
+                                <div>
+                                    <label class="form-label">Role</label>
+                                    <select id="new_user_role" class="form-input text-xs">
+                                        <option value="worker">Worker</option>
+                                        <option value="admin">Admin</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <button type="submit" class="btn-amber w-full py-2.5 text-xs font-bold shadow-md">
+                                        Grant Access
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Card 2: Authorized Users List (Matches Image 3) -->
+                    <div class="dark-card p-6 space-y-4">
+                        <div class="overflow-x-auto rounded border border-[#232d3f]">
+                            <table class="w-full text-left text-xs text-slate-300">
+                                <thead class="bg-[#121722] text-slate-400 font-semibold text-[11px] border-b border-[#232d3f]">
+                                    <tr>
+                                        <th class="p-3">Email</th>
+                                        <th class="p-3">Full Name</th>
+                                        <th class="p-3">Role</th>
+                                        <th class="p-3 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="usersTableBody" class="divide-y divide-[#1e2736]">
+                                    <tr>
+                                        <td class="p-3 font-mono text-slate-300">admin@leminationalcementplc.com</td>
+                                        <td class="p-3 font-bold text-white">Default Administrator</td>
+                                        <td class="p-3 font-semibold text-slate-300">Admin</td>
+                                        <td class="p-3 text-right">
+                                            <button class="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded text-xs">
+                                                Revoke
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+
+                <!-- =================================================================== -->
+                <!-- MODULE 4: DASHBOARD (Matches Images 1 & 2 from set 2) -->
+                <!-- =================================================================== -->
+                <section id="tab_dashboard" class="tab-content hidden space-y-6">
+                    <h2 class="text-xl font-bold text-white heading-serif" data-tr="m4_title">Dashboard</h2>
+
+                    <!-- Card 1: Tonnage Dispatched (Image 2) -->
+                    <div class="dark-card p-5 space-y-3">
+                        <h3 class="text-base font-bold text-white heading-serif">Tonnage Dispatched</h3>
+                        <div class="relative min-h-[220px]"><canvas id="tonnageTrendChart"></canvas></div>
+                    </div>
+
+                    <!-- Card 2: Labor Cost (ETB) (Image 2) -->
+                    <div class="dark-card p-5 space-y-3">
+                        <h3 class="text-base font-bold text-white heading-serif">Labor Cost (ETB)</h3>
+                        <div class="relative min-h-[220px]"><canvas id="laborGroupChart"></canvas></div>
+                    </div>
+
+                    <!-- Card 3: Overtime Cost (ETB) (Image 1) -->
+                    <div class="dark-card p-5 space-y-3">
+                        <h3 class="text-base font-bold text-white heading-serif">Overtime Cost (ETB)</h3>
+                        <div id="ot_cost_box" class="p-3 bg-[#121722] border border-[#232d3f] rounded text-xs text-sky-400 font-medium">
+                            No records yet.
+                        </div>
+                    </div>
+
+                    <!-- Card 4: Recent Activity (Image 1) -->
+                    <div class="dark-card p-5 space-y-3">
+                        <h3 class="text-base font-bold text-white heading-serif">Recent Activity</h3>
+                        <div class="overflow-x-auto rounded border border-[#232d3f]">
+                            <table class="w-full text-left text-xs text-slate-300">
+                                <thead class="bg-[#121722] text-slate-400 font-semibold text-[11px] border-b border-[#232d3f]">
+                                    <tr>
+                                        <th class="p-3">Time</th>
+                                        <th class="p-3">User</th>
+                                        <th class="p-3">Table</th>
+                                        <th class="p-3">Action</th>
+                                        <th class="p-3">Ref</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="activityLogBody" class="divide-y divide-[#1e2736]">
+                                    <tr class="hover:bg-[#1a2230]">
+                                        <td class="p-3 font-mono text-slate-400">2026-10-03 07:00</td>
+                                        <td class="p-3 font-mono text-slate-300">admin@leminationalcementplc.com</td>
+                                        <td class="p-3 font-semibold text-slate-300">dispatch</td>
+                                        <td class="p-3 text-emerald-400 font-bold">create</td>
+                                        <td class="p-3 font-mono text-slate-400">2026-10-03/robot</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Card 5: Export All Data Button (Image 1) -->
+                    <div class="dark-card p-5">
+                        <a href="/api/export/dispatch?format=csv" class="btn-amber inline-block py-2.5 px-6 text-xs font-bold shadow-md">
+                            Export All Data (Dispatch + Attendance CSV)
+                        </a>
+                    </div>
+                </section>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Modal: Change Password -->
+    <div id="changePasswordModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="dark-card w-full max-w-md p-6 relative space-y-4">
+            <button onclick="closeChangePasswordModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h3 class="text-lg font-bold text-white">Change Password</h3>
+            <form id="changePasswordForm" onsubmit="handleChangePasswordSubmit(event)" class="space-y-3">
+                <div>
+                    <label class="form-label">Current Password</label>
+                    <input type="password" id="old_password" class="form-input text-xs" required>
+                </div>
+                <div>
+                    <label class="form-label">New Password</label>
+                    <input type="password" id="new_password" class="form-input text-xs" required minlength="4">
+                </div>
+                <button type="submit" class="btn-amber w-full py-2.5 text-xs font-bold">
+                    Update Password
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toastNotification" class="fixed bottom-5 right-5 z-50 hidden">
+        <div class="bg-[#18202d] border border-amber-500/50 text-white px-4 py-3 rounded-lg shadow-xl text-xs flex items-center gap-2">
+            <i class="fa-solid fa-check text-amber-500"></i>
+            <span id="toastMessage">Done</span>
+        </div>
+    </div>
+
+    <!-- App JavaScript -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
